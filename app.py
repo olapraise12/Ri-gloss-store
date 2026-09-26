@@ -12,6 +12,7 @@ UPLOADS.mkdir(parents=True, exist_ok=True)
 DB = DATA_DIR / "ri_gloss.db"
 PAYSTACK_SECRET = os.environ.get("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_PUBLIC = os.environ.get("PAYSTACK_PUBLIC_KEY", "")
+WHATSAPP_NUMBER = os.environ.get("WHATSAPP_NUMBER", "2348032191299")
 OWNER_PASSWORD = os.environ.get("RI_GLOSS_OWNER_PASSWORD", "change-me-123")
 
 def db():
@@ -63,18 +64,17 @@ footer{text-align:center;background:#fff;padding:35px;margin-top:60px;border-top
 @media(max-width:800px){.hero{grid-template-columns:1fr;padding:45px 22px}.grid{grid-template-columns:1fr}.navlinks{display:none}.nav{padding:13px}.hero h1{font-size:50px}.row{flex-wrap:wrap}}
 </style></head><body>
 <header class="top"><div class="nav"><a class="logo" href="/">Ri <b>Gloss</b></a>
-<nav class="navlinks"><a href="/#shop">Shop</a><a href="/#about">About</a><a href="/#contact">Contact</a></nav>
+<nav class="navlinks"><a href="/#shop">Shop</a><a href="/#contact">Contact</a></nav>
 <a class="cartbtn" href="/cart">Cart ({{ cart_count }})</a></div></header>
 {% with messages=get_flashed_messages() %}{% if messages %}<div class="wrap"><div class="notice">{{ messages[0] }}</div></div>{% endif %}{% endwith %}
 {{ body|safe }}
 <footer>© 2026 Ri Gloss · Lip Gloss Store</footer></body></html>"""
 
-HOME = r"""<section class="hero"><div><h1>Gloss that<br><span style="color:#d94d82">speaks for you.</span></h1><p>Welcome to Ri Gloss — your dedicated lip-gloss store. Discover beautiful glosses, add your favourites to your cart and order directly.</p><a class="primary" href="#shop">Shop Lip Gloss</a></div><div class="art"><div class="bottle"></div></div></section>
+HOME = r"""<section class="hero"><div><h1>Gloss that<br><span style="color:#d94d82">speaks for you.</span></h1><p>Welcome to Ri Gloss — your dedicated lip-gloss store. Browse available glosses, add your favourites to your cart and order directly.</p><a class="primary" href="#shop">Shop Lip Gloss</a></div></section>
 <section class="wrap" id="shop"><h2 class="title">Shop Our Lip Gloss</h2><div class="grid">
-{% for p in products %}<article class="card"><div class="pic">{% if p.image %}<img src="{{url_for('uploaded_file',filename=p.image)}}" alt="{{p.name}}">{% else %}<div class="sample"></div>{% endif %}</div><div class="info"><h3>{{p.name}}</h3><p>{{p.description}}</p><div class="price">₦{{"{:,}".format(p.price)}}</div><form method="post" action="/cart/add"><input type="hidden" name="id" value="{{p.id}}"><button class="buy">Add to cart</button></form></div></article>{% else %}<p>No products yet. The owner can add products from the owner dashboard.</p>{% endfor %}
+{% for p in products %}<article class="card"><div class="pic">{% if p.image %}<img src="{{url_for('uploaded_file',filename=p.image)}}" alt="{{p.name}}">{% else %}<div></div>{% endif %}</div><div class="info"><h3>{{p.name}}</h3><p>{{p.description}}</p><div class="price">₦{{"{:,}".format(p.price)}}</div><form method="post" action="/cart/add"><input type="hidden" name="id" value="{{p.id}}"><button class="buy">Add to cart</button></form></div></article>{% else %}<p>No products yet. The owner can add products from the owner dashboard.</p>{% endfor %}
 </div></section>
-<section class="wrap" id="about"><h2 class="title">About Ri Gloss</h2><div class="about">Ri Gloss is a lip-gloss-only online store. The owner can add products, prices, descriptions and real product photos from the private owner dashboard.</div></section>
-<section class="wrap" id="contact"><h2 class="title">Contact Ri Gloss</h2><div class="contact"><h3>Need help with an order?</h3><p>Contact the store owner directly on WhatsApp.</p><a class="wa" href="https://wa.me/2348032191299" target="_blank">Chat on WhatsApp</a></div></section>"""
+<section class="wrap" id="contact"><h2 class="title">Contact Ri Gloss</h2><div class="contact"><h3>Need help with an order?</h3><p>Contact the store owner directly on WhatsApp.</p><a class="wa" href="https://wa.me/{{WHATSAPP_NUMBER}}" target="_blank">Chat on WhatsApp</a></div></section>"""
 
 CART = r"""<section class="admin"><div class="panel"><h1>Your Cart</h1>{% if items %}{% for x in items %}<p><strong>{{x.name}}</strong> — ₦{{"{:,}".format(x.price)}}</p>{% endfor %}<hr><h2>Total: ₦{{"{:,}".format(total)}}</h2><a class="primary" href="/checkout">Pay securely with Paystack</a> <a class="wa" href="{{wa}}">Order on WhatsApp</a>{% else %}<p>Your cart is empty.</p><a class="primary" href="/">Continue shopping</a>{% endif %}</div></section>"""
 
@@ -91,7 +91,7 @@ DASH = r"""<section class="admin"><div class="panel"><h1>Owner Dashboard</h1><p>
 
 def page(body, title="Ri Gloss"):
     con=db(); count=sum(session.get("cart",[]).__len__() for _ in [0])
-    return render_template_string(HTML, body=render_template_string(body, **page_data()), title=title, cart_count=count)
+    return render_template_string(HTML, body=render_template_string(body, **page_data()), title=title, cart_count=count, WHATSAPP_NUMBER=WHATSAPP_NUMBER)
 
 def page_data():
     con=db(); products=con.execute("SELECT * FROM products ORDER BY id DESC").fetchall()
@@ -117,7 +117,7 @@ def cart():
         if p: items.append(p)
     con.close(); total=sum(x["price"] for x in items)
     msg="Hello Ri Gloss! I would like to order:%0A"+"%0A".join("- "+x["name"]+" (₦"+format(x["price"],",")+")" for x in items)+"%0ATotal: ₦"+format(total,",")
-    return render_template_string(HTML,body=render_template_string(CART,items=items,total=total,wa="https://wa.me/2348032191299?text="+msg),title="Cart | Ri Gloss",cart_count=len(ids))
+    return render_template_string(HTML,body=render_template_string(CART,items=items,total=total,wa="https://wa.me/"+WHATSAPP_NUMBER+"?text="+msg),title="Cart | Ri Gloss",cart_count=len(ids),WHATSAPP_NUMBER=WHATSAPP_NUMBER)
 
 
 @APP.route("/checkout", methods=["GET","POST"])
@@ -133,7 +133,7 @@ def checkout():
         flash("Your cart is empty.")
         return redirect("/")
     if request.method=="GET":
-        return render_template_string(HTML,body=render_template_string(CHECKOUT,items=items,total=total),title="Checkout | Ri Gloss",cart_count=len(ids))
+        return render_template_string(HTML,body=render_template_string(CHECKOUT,items=items,total=total),title="Checkout | Ri Gloss",cart_count=len(ids),WHATSAPP_NUMBER=WHATSAPP_NUMBER)
     email=request.form["email"].strip()
     if not PAYSTACK_SECRET:
         flash("Paystack is not configured yet. Add PAYSTACK_SECRET_KEY in Render.")
@@ -155,7 +155,7 @@ def checkout():
     if not data.get("status"):
         flash("Paystack could not initialize this payment.")
         return redirect("/checkout")
-    return render_template_string(HTML,body=render_template_string(PAYMENT,url=data["data"]["authorization_url"]),title="Paystack | Ri Gloss",cart_count=len(ids))
+    return render_template_string(HTML,body=render_template_string(PAYMENT,url=data["data"]["authorization_url"]),title="Paystack | Ri Gloss",cart_count=len(ids),WHATSAPP_NUMBER=WHATSAPP_NUMBER)
 
 @APP.route("/payment/callback")
 def payment_callback():
